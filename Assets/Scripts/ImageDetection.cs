@@ -17,10 +17,8 @@ public class ImageTracking : MonoBehaviour
     private ObjectPool[] firstModelsPool;
     private ObjectPool[] secondModelsPool;
     private ObjectPool[] thirdModelsPool;
-    
     private ARTrackedImageManager trackedImageManager => GetComponent<ARTrackedImageManager>();
     private List<PositionData> positionData;
-    private Vector3 _markPosition;
     private List<GameObject> instantiatedModels = new List<GameObject>();
     private int chosenPack = 0;
     private float movementTimeout = 15f;
@@ -43,28 +41,20 @@ public class ImageTracking : MonoBehaviour
 
     private void Start()
     {
-        Screen.sleepTimeout = SleepTimeout.NeverSleep;
-        Application.targetFrameRate = 20;
-        
-        _arSession.gameObject.SetActive(true);
-        _arSession.matchFrameRateRequested = false;
-        _arSession.attemptUpdate = false;
-        QualitySettings.vSyncCount = 0;
+        ConfigARSession();
 
         firstModelsPool = CreatePools(firstModelsPack);
         secondModelsPool = CreatePools(secondModelsPack);
         thirdModelsPool = CreatePools(thirdModelsPack);
 
-        trackedImageManager.requestedMaxNumberOfMovingImages = 1;
-
         if (PlayerPrefs.HasKey("DeviceNumber"))
         {
             int deviceNumber = PlayerPrefs.GetInt("DeviceNumber");
             Debug.Log($"DeviceNumber found: {deviceNumber}");
-            OnChangeModelsClick(deviceNumber);
+            OnChangeModelsPack(deviceNumber);
         }
 
-        StartCoroutine(StartTrackingWithDelay(3f)); // Запускаем отслеживание изображения с периодичностью
+        StartCoroutine(StartTrackingWithDelay(3f));
         StartCoroutine(CheckDeviceMovement());
         PeriodicResourceCleanup();
     }
@@ -79,6 +69,17 @@ public class ImageTracking : MonoBehaviour
         trackedImageManager.trackedImagesChanged -= OnTrackedImagesChanged;
         StopAllCoroutines();
         FreeResources();
+    }
+
+    private void ConfigARSession()
+    {
+        Screen.sleepTimeout = SleepTimeout.NeverSleep;
+        Application.targetFrameRate = 20;
+        _arSession.gameObject.SetActive(true);
+        _arSession.matchFrameRateRequested = false;
+        _arSession.attemptUpdate = false;
+        QualitySettings.vSyncCount = 0;
+        trackedImageManager.requestedMaxNumberOfMovingImages = 1;
     }
 
     
@@ -400,6 +401,7 @@ public class ImageTracking : MonoBehaviour
         {
             _arSession.Reset();
             PlayerPrefs.DeleteKey("DeviceNumber");
+            PlayerPrefs.Save();
             Scene scene = SceneManager.GetActiveScene();
             SceneManager.LoadScene(scene.name);
             FreeResources();
@@ -411,12 +413,13 @@ public class ImageTracking : MonoBehaviour
         }
     }
 
-    public void OnChangeModelsClick(int chosenModelsNumber)
+    public void OnChangeModelsPack(int chosenModelsNumber)
     {
         try
         {
             _buttonsGroup.SetActive(false);
             PlayerPrefs.SetInt("DeviceNumber", chosenModelsNumber);
+            PlayerPrefs.Save();
             string jsonUrl;
             switch (chosenModelsNumber)
             {
